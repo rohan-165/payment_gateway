@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously, constant_identifier_names
+
 import 'dart:developer';
 
 import 'package:esewa_flutter_sdk/esewa_config.dart';
@@ -5,6 +7,35 @@ import 'package:esewa_flutter_sdk/esewa_flutter_sdk.dart';
 import 'package:esewa_flutter_sdk/esewa_payment.dart';
 import 'package:esewa_flutter_sdk/esewa_payment_success_result.dart';
 import 'package:flutter/material.dart';
+import 'package:khalti_checkout_flutter/khalti_checkout_flutter.dart' as khalti;
+
+enum KhaltiPaymentStatus {
+  Completed,
+  Pending,
+  Failed,
+  Initiated,
+  Refunded,
+  Expired
+}
+
+KhaltiPaymentStatus? getKhaltiStatus({required String status}) {
+  switch (status) {
+    case "Completed":
+      return KhaltiPaymentStatus.Completed;
+    case "Pending":
+      return KhaltiPaymentStatus.Pending;
+    case "Failed":
+      return KhaltiPaymentStatus.Failed;
+    case "Initiated":
+      return KhaltiPaymentStatus.Initiated;
+    case "Refunded":
+      return KhaltiPaymentStatus.Refunded;
+    case "Expired":
+      return KhaltiPaymentStatus.Expired;
+    default:
+      return null;
+  }
+}
 
 mixin PaymentMx {
   void eSewaPayment({
@@ -57,69 +88,65 @@ mixin PaymentMx {
     }
   }
 
-  // void khaltiPaymentMethod({
-  //   required BuildContext context,
-  //   required PaymentGateways paymentGateway,
-  //   required String pidx,
-  //   required Function(
-  //           PaymentGateways paymentGateway, PaymentResult paymentResult)
-  //       onKhaltiSuccess,
-  // }) async {
-  //   try {
-  //     final payConfig = khalti.KhaltiPayConfig(
-  //         publicKey: EnvironmentConfig.isProd
-  //             ? paymentGateway.appCredentials!.khaltiPublicKey!
-  //             : paymentGateway.appCredentials!
-  //                 .khaltiPublicKey!, // "live_public_key_979320ffda734d8e9f7758ac39ec775f",
-  //         pidx: EnvironmentConfig.isProd
-  //             ? pidx
-  //             : pidx, // "ZyzCEMLFz2QYFYfERGh8LE",
-  //         environment: EnvironmentConfig.isProd
-  //             ? khalti.Environment.prod
-  //             : khalti.Environment.test);
+  void khaltiPaymentMethod({
+    required BuildContext context,
+    String? pidx,
+    required Function(khalti.PaymentResult paymentResult) onKhaltiSuccess,
+  }) async {
+    try {
+      final payConfig = khalti.KhaltiPayConfig(
+          publicKey: "live_public_key_979320ffda734d8e9f7758ac39ec775f",
+          pidx: pidx ?? "ZyzCEMLFz2QYFYfERGh8LE",
+          environment: khalti.Environment.test);
 
-  //     khalti.Khalti khaltis = await khalti.Khalti.init(
-  //       enableDebugging: true,
-  //       payConfig: payConfig,
-  //       onPaymentResult: (PaymentResult paymentResult, khalti) async {
-  //         log(paymentResult.toString());
-  //         var url = "https://khalti.com/api/payment/verify_service_use/";
-  //         print(url);
-  //         var body = {
-  //           "token": paymentResult.payload?.transactionId,
-  //           "amount": paymentResult.payload?.totalAmount.toString(),
-  //           "service_slug": "government_payment"
-  //         };
-  //         http.Response? response = await http.post(Uri.parse(url),
-  //             headers: {
-  //               "Authorization":
-  //                   "Key live_secret_key_177aa7de5d1e489592b619556c477bc5"
-  //             },
-  //             body: body);
-  //         print("StatusCode ${response.statusCode}");
-  //         if (response.statusCode == 200) {
-  //           onKhaltiSuccess(paymentGateway, paymentResult);
-  //         }
-  //       },
-  //       onMessage: (
-  //         khalti, {
-  //         description,
-  //         statusCode,
-  //         event,
-  //         needsPaymentConfirmation,
-  //       }) async {
-  //         log(
-  //           'Description: $description, Status Code: $statusCode, Event: $event, NeedsPaymentConfirmation: $needsPaymentConfirmation',
-  //         );
-  //       },
-  //       onReturn: () => log('Successfully redirected to return_url.'),
-  //     );
-  //     khaltis.open(context);
-  //   } on Exception {
-  //   } catch (e) {
-  //     showErrorToast(msg: 'Error in payment process: $e');
-  //   }
-  // }
+      khalti.Khalti khaltis = await khalti.Khalti.init(
+        enableDebugging: true,
+        payConfig: payConfig,
+        onPaymentResult: (khalti.PaymentResult paymentResult, khalti) async {
+          if (getKhaltiStatus(status: paymentResult.payload?.status ?? '') ==
+              KhaltiPaymentStatus.Completed) {
+            onKhaltiSuccess(paymentResult);
+            showToast(context: context, msg: 'Payment Successful');
+            khalti.close(context);
+          } else if (getKhaltiStatus(
+                  status: paymentResult.payload?.status ?? '') ==
+              KhaltiPaymentStatus.Failed) {
+            showToast(
+              context: context,
+              msg: 'payment failure',
+              color: Colors.red,
+            );
+            khalti.close(context);
+          } else {
+            showToast(
+              context: context,
+              msg: 'payment cancel',
+              color: Colors.red,
+            );
+            khalti.close(context);
+          }
+          khalti.close(context);
+          log(paymentResult.payload.toString());
+        },
+        onMessage: (
+          khalti, {
+          description,
+          statusCode,
+          event,
+          needsPaymentConfirmation,
+        }) async {
+          log(
+            'Description: $description, Status Code: $statusCode, Event: $event, NeedsPaymentConfirmation: $needsPaymentConfirmation',
+          );
+        },
+        onReturn: () => log('Successfully redirected to return_url.'),
+      );
+      khaltis.open(context);
+    } on Exception {
+    } catch (e) {
+      showToast(context: context, msg: 'Error in payment process: $e');
+    }
+  }
 }
 
 showToast({

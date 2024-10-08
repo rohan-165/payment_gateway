@@ -14,7 +14,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'PayMent GateWay',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
       home: const MyHomePage(),
@@ -66,6 +65,28 @@ class _MyHomePageState extends State<MyHomePage> with PaymentMx {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Text("e-Sewa"),
+              ),
+            ),
+            const SizedBox(
+              height: 40,
+            ),
+            InkWell(
+              onTap: () {
+                khaltiPaymentMethod(
+                  context: context,
+                  onKhaltiSuccess: (paymentResult) {},
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 30,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.amber,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Text("Khalti"),
               ),
             )
           ],
